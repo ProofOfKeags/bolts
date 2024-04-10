@@ -507,7 +507,7 @@ channel by indicating that "SomeThing Fundamental is Underway".
     * [`channel_id`:`channel_id`]
     * [`u8`:`initiator`]
 
-### Requirements
+#### Requirements
 
 The sender of `stfu`:
   - MUST NOT send `stfu` unless `option_quiesce` is negotiated.
@@ -532,7 +532,7 @@ The receiver of `stfu`:
 Upon disconnection:
   - the channel is no longer considered quiescent.
 
-### Rationale
+#### Rationale
 
 The normal use would be to cease sending updates, then wait for all
 the current updates to be acknowledged by both peers, then start
@@ -544,6 +544,42 @@ If both sides send `stfu` simultaneously, they will both set
 considered to be the channel funder (the sender of `open_channel`).
 The quiescence effect is exactly the same as if one had replied to the
 other.
+
+### `go_on`
+
+1. type: TODO (`go_on`)
+2. data:
+    * [`channel_id`:`channel_id`]
+    * **NOTE FOR REVIEWERS** do we need to include initiator here? I think not.
+
+#### Requirements
+
+The sender of `go_on`:
+  - MUST NOT send `go_on` for a channel that is NOT quiescent.
+  - MUST NOT send `go_on` if it is not the quiescence "initiator".
+  - MUST NOT send `go_on` twice without an interceding full quiescence
+    negotiation.
+  - MUST send `go_on` once any dependent protocol has completed.
+  - MAY send `update_*` messages afterwards.
+
+The receiver of `go_on`:
+  - if there is any incomplete downstream protocol state:
+    - SHOULD treat downstream protocol state as it would if the peer
+      disconnected.
+  - MUST handle subsequent `update_*` messages from the peer.
+  - if it has not sent a `go_on` since it sent `stfu`:
+    - MUST reply with a `go_on` message.
+
+#### Rationale
+
+If we do not include a message that explicitly resumes update traffic then we
+must depend on the the downstream protocol to mark when update traffic may
+resume. This is problematic because it means we cannot implement this protocol
+in isolation with all of its resumption semantics.
+
+Only the initiator of the quiescence is allowed to commence with `go_on` as
+it is that node that can determine when the quiescence purpose has been
+accomplished.
 
 ## Channel Close
 
